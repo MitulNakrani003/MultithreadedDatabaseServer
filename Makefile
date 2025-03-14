@@ -13,6 +13,12 @@ all: $(EXES)
 dbtest: dbtest.o
 
 dbserver: dbserver.o
+	gcc -ggdb3 dbserver.o -o dbserver
+
+CFLAGS = -Wall -ggdb3
+
+dbserver.o: dbserver.c
+	gcc $(CFLAGS) -c dbserver.c -o dbserver.o
 
 clean:
 	rm -f $(EXES) *.o data.[0-9]*
