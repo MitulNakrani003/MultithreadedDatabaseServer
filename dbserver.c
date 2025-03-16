@@ -10,7 +10,7 @@
 #define LISTENER_QUEUE_SIZE 2
 #define MAX_BUFF_LEN 1024
 
-int main(int argc, char **argv) {
+int listener() {
 	int conn_sock = -1;
 	
 	struct addrinfo hints = {
@@ -79,6 +79,14 @@ int main(int argc, char **argv) {
 		close(conn_sock);
 	}
 	close(listener_sock);
+	
+	return 0;
+}
 
+int main(int argc, char **argv) {
+	int status = listener();
+	if (status != 0) {
+		return 1;
+	}	
 	return 0;
 }
