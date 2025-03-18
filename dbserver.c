@@ -12,6 +12,7 @@
 #define DEFAULT_PORT "5000"
 #define LISTENER_QUEUE_SIZE 2
 #define MAX_BUFF_LEN 1024
+#define MAX_DATA_KEYS 200
 
 int listener()
 {
@@ -77,6 +78,9 @@ int listener()
 
 		printf("Client connected:\n");
 
+		// Testing Handle the request
+		handle_work(conn_sock);
+
 		char msg[MAX_BUFF_LEN] = {'\0'};
 		int bytes_recvd = recv(conn_sock, msg, MAX_BUFF_LEN - 1, 0);
 
@@ -101,6 +105,73 @@ int listener()
 	}
 	close(listener_sock);
 	return 0;
+}
+
+
+void handle_work(int sock_fd)
+{
+	if (sock_fd == -1)
+	{
+		perror("connection: accept");
+		return;
+	}
+	printf("Client connected:\n");
+
+	struct request req;
+	char data[4096];
+    ssize_t bytes_recvd;
+	int total_bytes_recvd = 0;
+
+	while (total_bytes_recvd < sizeof(req)) {
+		bytes_recvd = recv(sock_fd, ((char*)&req) + total_bytes_recvd, sizeof(req) - total_bytes_recvd, 0);
+	
+		if (bytes_recvd <= 0) {
+			perror("Failed to read request header");
+			close(sock_fd);
+			return;
+		}
+	
+		total_bytes_recvd += bytes_recvd;
+	}
+
+	int len = atoi(req.len);
+
+	printf("Operation: %c\n", req.op_status);
+	printf("Name: %s\n", req.name);
+	printf("Length: %s\n", req.len);
+	
+
+	switch (req.op_status) {
+		case 'W':
+			int total_bytes = 0;
+			if (len > 0 && len <= 4096) 
+			{
+				total_bytes = 0;
+				while (total_bytes < len) {
+					bytes_recvd = recv(sock_fd, data + total_bytes, len - total_bytes, 0);
+			
+					if (bytes_recvd <= 0) 
+					{
+						perror("recv failed");
+						close(sock_fd);
+						return;
+					}
+					total_bytes += bytes_recvd;
+				}
+				printf("Data: %s\n", data);
+			}
+			break;
+		case 'R':
+			
+			break;
+		case 'D':
+			
+			break;
+		default:
+			
+			break;
+	}
+	
 }
 
 int main(int argc, char **argv)
