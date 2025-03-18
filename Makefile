@@ -12,8 +12,8 @@ all: $(EXES)
 
 dbtest: dbtest.o
 
-dbserver: dbserver.o
-	gcc -ggdb3 dbserver.o -o dbserver
+dbserver: dbserver.o queue.o
+	gcc -ggdb3 dbserver.o  queue.o -o dbserver
 
 CFLAGS = -Wall -ggdb3
 
@@ -22,6 +22,9 @@ dbtest.o: dbtest.c
 
 dbserver.o: dbserver.c
 	gcc $(CFLAGS) -c dbserver.c -o dbserver.o
+
+queue.o: queue.c queue.h
+	gcc $(CFLAGS) -c queue.c -o queue.o
 
 clean:
 	rm -f $(EXES) *.o data.[0-9]*
