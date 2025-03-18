@@ -1,0 +1,11 @@
+COMPLETED AND WORKING:
+1. Completed the single threaded initial implementation of listener, handle_work and queue_work functions.
+2. Testing of individual functions completed.
+3. Completed database commands parsing.
+4. Continuing with the implementation of the database, its structure and work queue.
+
+TO BE COMPLETED:
+1. Complete the Database server implementation.
+2. Multi-threaded synchronization of the worker threads.
+3. Extensive testing of the database and individual functions.
+
