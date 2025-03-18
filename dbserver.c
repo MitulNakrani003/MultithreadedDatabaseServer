@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+
+#include "proj2.h"
 
 // Change these values as required
 #define DEFAULT_PORT "5000"
@@ -77,13 +80,21 @@ int listener()
 		char msg[MAX_BUFF_LEN] = {'\0'};
 		int bytes_recvd = recv(conn_sock, msg, MAX_BUFF_LEN - 1, 0);
 
-		if (bytes_recvd > 0)
-		{
-			printf("Received: %s\n", msg);
+		struct request req = {0};
+		req.op_status = msg[0];
+		strncpy(req.name, msg + 1, 31);
+		strncpy(req.len, msg + 32, 8);
+		char data[4096] = {'\0'};
+		strncpy(data, msg + 40, 4096);
+			
+		if (bytes_recvd > 0) {
+			printf("Operation: %c\n", req.op_status);
+			printf("Name: %s\n", req.name);
+			printf("Length: %s\n", req.len);
+			printf("Data: %s\n", data);
 		}
 
-		if (send(conn_sock, "Hello from server\n", 18, 0) < 0)
-		{
+		if (send(conn_sock, msg, sizeof(msg), 0) < 0) {
 			perror("send");
 		}
 		close(conn_sock);

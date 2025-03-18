@@ -17,6 +17,9 @@ dbserver: dbserver.o
 
 CFLAGS = -Wall -ggdb3
 
+dbtest.o: dbtest.c
+	gcc $(CLAGS) -c dbtest.c -o dbtest.o
+
 dbserver.o: dbserver.c
 	gcc $(CFLAGS) -c dbserver.c -o dbserver.o
 
