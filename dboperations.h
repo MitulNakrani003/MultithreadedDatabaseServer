@@ -6,7 +6,9 @@
 #define DB_BUSY 1
 #define DB_VALID 2
 
-struct db_entry {
+#define DB_VALUE_MAXLENGTH 4096
+
+typedef struct db_entry {
 	char *name;
 	int state;
 } db_entry_t; 
