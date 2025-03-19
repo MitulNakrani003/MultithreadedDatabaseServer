@@ -1,15 +1,20 @@
+#include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "dboperations.h"
 
+#define MAX_KEYS 200 // Number of keys
 #define BASE_FOLDER "/temp"
 #define MAX_PATH_LENGTH 100
 
-const int n = 200; // Number of keys
-db_entry_t entries[n] = {0};
+db_entry_t entries[MAX_KEYS] = {0};
 
 int get_index(char *key) {
-	for (int i = 0; i < n; i++) {
+	for (int i = 0; i < MAX_KEYS; i++) {
 		if (strcmp(entries[i].name, key) == 0) {
 			return i;
 		}
@@ -19,7 +24,7 @@ int get_index(char *key) {
 
 int get_free_index() {
 	// TODO: Can keep a start variable instead of always starting from 0
-	for (int i = 0; i < n; i++) {
+	for (int i = 0; i < MAX_KEYS; i++) {
 		if (entries[i].state == DB_INVALID) {
 			return i;
 		}
@@ -34,7 +39,7 @@ int get_file_path(int index, char *filepath) {
 int db_read(char *key, char *value) {
 	int index = get_index(key);
 	// Only read valid entries
-	if (index == -1 || entries[index] == DB_INVALID) {
+	if (index == -1 || entries[index].state == DB_INVALID) {
 		perror("invalid key");
 		return -1;
 	}
@@ -44,12 +49,12 @@ int db_read(char *key, char *value) {
 		perror("filepath failed");
 		return -1;
 	}
-	int fd = open(filename, O_RDONLY);
+	int fd = open(filepath, O_RDONLY);
 	if (fd < 0) {
 		perror("file open for read failed");
 		return -1;	
 	}
-	ssize_t bytes_read = read(fd, value, DB_VALUE_MALENGTH);
+	ssize_t bytes_read = read(fd, value, DB_VALUE_MAXLENGTH);
 	if (bytes_read == -1) {
 		perror("read failed");
 		return -1;
@@ -62,19 +67,20 @@ int db_read(char *key, char *value) {
 int db_write(char *key, char *value) {
 	int index = get_index(key); // Check if the key already exists
 	if (index == -1) {
-		index == get_free_index(key); // Find an invalid entry
+		index = get_free_index(key); // Find an invalid entry
 		if (index == -1) {
 			perror("invalid key");
 			return -1;
 		}
 	}
+	// TODO: Add a sleeping delay here4
 	entries[index].state = DB_BUSY;
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, key) < 0) {
 		perror("filepath failed");
 		return -1;
 	}
-	int fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0777);
+	int fd = open(filepath, O_WRONLY | O_CREAT | O_TRUNC, 0777);
 	if (fd < 0) {
 		perror("file open for write failed");
 		return -1;	

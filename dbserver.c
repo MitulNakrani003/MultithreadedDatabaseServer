@@ -94,10 +94,10 @@ int listener()
 
 		// Testing Handle the request
 		// Enqueue the work
-        queue_work(conn_sock);
-        // Dequeue and handle the work
-        int sock = get_work();
-        handle_work(sock);
+	        queue_work(conn_sock);
+        	// Dequeue and handle the work
+       		int sock = get_work();
+        	handle_work(sock);
 
 		// char msg[MAX_BUFF_LEN] = {'\0'};
 		// int bytes_recvd = recv(conn_sock, msg, MAX_BUFF_LEN - 1, 0);
@@ -137,7 +137,7 @@ void handle_work(int sock_fd)
 
 	struct request req;
 	char data[4096];
-    ssize_t bytes_recvd;
+    	ssize_t bytes_recvd;
 	int total_bytes_recvd = 0;
 
 	while (total_bytes_recvd < sizeof(req)) {
