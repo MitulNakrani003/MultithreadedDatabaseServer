@@ -26,7 +26,7 @@ void enqueue(queue_t *queue, int sock_fd)
 int dequeue(queue_t *queue)
 {
     if (queue->front == NULL){
-        return NULL;
+        return -1;
     }
     node_t *temp = queue->front;
     int sock_fd = temp->sock_fd;

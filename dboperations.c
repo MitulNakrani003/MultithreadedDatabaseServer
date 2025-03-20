@@ -8,7 +8,7 @@
 #include "dboperations.h"
 
 #define MAX_KEYS 200 // Number of keys
-#define BASE_FOLDER "/temp"
+#define BASE_FOLDER "/tmp"
 #define MAX_PATH_LENGTH 100
 
 db_entry_t entries[MAX_KEYS] = {0};
@@ -45,7 +45,7 @@ int db_read(char *key, char *value) {
 	}
 	entries[index].state = DB_BUSY;
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
-	if (get_file_path(index, key) < 0) {
+	if (get_file_path(index, filepath) < 0) {
 		perror("filepath failed");
 		return -1;
 	}
@@ -76,7 +76,7 @@ int db_write(char *key, char *value) {
 	// TODO: Add a sleeping delay here4
 	entries[index].state = DB_BUSY;
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
-	if (get_file_path(index, key) < 0) {
+	if (get_file_path(index, filepath) < 0) {
 		perror("filepath failed");
 		return -1;
 	}
@@ -85,12 +85,13 @@ int db_write(char *key, char *value) {
 		perror("file open for write failed");
 		return -1;	
 	}
-	ssize_t bytes_written = write(fd, value, sizeof(value));
+	ssize_t bytes_written = write(fd, value, strlen(value));
 	if (bytes_written == -1) {
 		perror("write failed");
 		return -1;
 	}
 	close(fd);
+	strcpy(entries[index].name, key);
 	entries[index].state = DB_VALID;
 	return 0;
 }
@@ -102,7 +103,7 @@ int db_delete(char *key) {
 		return -1;
 	}
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
-	if (get_file_path(index, key) < 0) {
+	if (get_file_path(index, filepath) < 0) {
 		perror("filepath failed");
 		return -1;
 	}
@@ -110,6 +111,7 @@ int db_delete(char *key) {
 		perror("delete");
 		return -1;
 	}
+	strcpy(entries[index].name, "");
 	entries[index].state = DB_INVALID;
 	return 0;
 }

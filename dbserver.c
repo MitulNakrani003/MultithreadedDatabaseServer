@@ -8,6 +8,7 @@
 
 #include "proj2.h"
 #include "queue.h"
+#include "dboperations.h"
 
 //Queue Instance
 queue_t *work_queue = NULL;
@@ -15,8 +16,6 @@ queue_t *work_queue = NULL;
 // Change these values as required
 #define DEFAULT_PORT "5000"
 #define LISTENER_QUEUE_SIZE 2
-#define MAX_BUFF_LEN 1024
-#define MAX_DATA_KEYS 200
 
 void queue_work(int sock_fd) {
     enqueue(work_queue, sock_fd);
@@ -177,6 +176,12 @@ void handle_work(int sock_fd)
 					total_bytes += bytes_recvd;
 				}
 				printf("Data: %s\n", data);
+				int status = db_write(req.name, data);
+				if (status < 0) {
+					perror("write unsuccessful");
+					break;
+				}
+				printf("write successful\n");
 			}
 			break;
 		case 'R':
@@ -189,7 +194,7 @@ void handle_work(int sock_fd)
 			
 			break;
 	}
-	
+	close(sock_fd);	
 }
 
 int main(int argc, char **argv)

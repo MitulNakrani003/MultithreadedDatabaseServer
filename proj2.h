@@ -11,4 +11,8 @@ struct request {
     char len[8];                /* text, decimal, null-padded */
 };
 
+void queue_work(int sock_fd);
+int get_work();
+void handle_work(int sock_fd);
+
 #endif
