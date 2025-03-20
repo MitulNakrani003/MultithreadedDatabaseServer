@@ -134,9 +134,9 @@ void handle_work(int sock_fd)
 	}
 	printf("Client connected:\n");
 
-	struct request req;
-	char data[4096];
-    	ssize_t bytes_recvd;
+	struct request req = {0};
+	char data[4096] = "";
+    	ssize_t bytes_recvd = 0;
 	int total_bytes_recvd = 0;
 
 	while (total_bytes_recvd < sizeof(req)) {
