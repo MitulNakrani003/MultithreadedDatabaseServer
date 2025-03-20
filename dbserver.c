@@ -135,7 +135,7 @@ void handle_work(int sock_fd)
 	printf("Client connected:\n");
 
 	struct request req = {0};
-	char data[4096] = "";
+	char data[DB_VALUE_MAXLENGTH + 1] = "";
     	ssize_t bytes_recvd = 0;
 	int total_bytes_recvd = 0;
 
@@ -157,7 +157,11 @@ void handle_work(int sock_fd)
 	printf("Name: %s\n", req.name);
 	printf("Length: %s\n", req.len);
 	
-
+	int status = -1;
+	int error = 0;
+	struct request res = {0};
+	strcpy(res.name, "");
+	res.op_status = 'X';
 	switch (req.op_status) {
 		case 'W':
 			int total_bytes = 0;
@@ -170,29 +174,55 @@ void handle_work(int sock_fd)
 					if (bytes_recvd <= 0) 
 					{
 						perror("recv failed");
-						close(sock_fd);
-						return;
+						error = 1;
+						break;
 					}
 					total_bytes += bytes_recvd;
 				}
 				printf("Data: %s\n", data);
-				int status = db_write(req.name, data);
+				status = db_write(req.name, data);
 				if (status < 0) {
 					perror("write unsuccessful");
+					error = 1;		
 					break;
 				}
+				res.op_status = 'K';
+				send(sock_fd, (void *)&res, sizeof(res), 0);
 				printf("write successful\n");
 			}
 			break;
+		
 		case 'R':
-			
+			status = db_read(req.name, data);
+			if (status < 0) {
+				perror("read unsuccessful");
+				error = 1;
+				break;
+			}
+			res.op_status = 'K';
+			sprintf(res.len, "%ld", strlen(data));
+			send(sock_fd, (void *)&res, sizeof(res), 0);
+			send(sock_fd, data, strlen(data), 0);
+			printf("Bytes: %ld, Data: %s\n", strlen(data), data);	
 			break;
+		
 		case 'D':
-			
+			status = db_delete(req.name);
+			if (status < 0) {
+				perror("delete unsuccessful");
+				error = 1;
+				break;
+			}
+			res.op_status = 'K';
+			send(sock_fd, (void *)&res, sizeof(res), 0);
+			printf("delete successful!\n");		
 			break;
+		
 		default:
-			
 			break;
+	}
+	if (error == 1) {
+		send(sock_fd, (void *)&res, sizeof(res), 0);	
 	}
 	close(sock_fd);	
 }
