@@ -97,33 +97,10 @@ int listener()
         	// Dequeue and handle the work
        		int sock = get_work();
         	handle_work(sock);
-
-		// char msg[MAX_BUFF_LEN] = {'\0'};
-		// int bytes_recvd = recv(conn_sock, msg, MAX_BUFF_LEN - 1, 0);
-
-		// struct request req = {0};
-		// req.op_status = msg[0];
-		// strncpy(req.name, msg + 1, 31);
-		// strncpy(req.len, msg + 32, 8);
-		// char data[4096] = {'\0'};
-		// strncpy(data, msg + 40, 4096);
-			
-		// if (bytes_recvd > 0) {
-		// 	printf("Operation: %c\n", req.op_status);
-		// 	printf("Name: %s\n", req.name);
-		// 	printf("Length: %s\n", req.len);
-		// 	printf("Data: %s\n", data);
-		// }
-
-		// if (send(conn_sock, msg, sizeof(msg), 0) < 0) {
-		// 	perror("send");
-		// }
-		// close(conn_sock);
 	}
 	close(listener_sock);
 	return 0;
 }
-
 
 void handle_work(int sock_fd)
 {
@@ -153,15 +130,11 @@ void handle_work(int sock_fd)
 
 	int len = atoi(req.len);
 
-	printf("Operation: %c\n", req.op_status);
-	printf("Name: %s\n", req.name);
-	printf("Length: %s\n", req.len);
-	
 	int status = -1;
-	int error = 0;
-	struct request res = {0};
-	strcpy(res.name, "");
-	res.op_status = 'X';
+	int error = 0; // flag to check if an error occurred in db operation
+	struct request res = {0}; // response header
+	strcpy(res.name, ""); // name is irrelevant
+	res.op_status = 'X'; // Fail status
 	switch (req.op_status) {
 		case 'W':
 			int total_bytes = 0;
@@ -179,16 +152,14 @@ void handle_work(int sock_fd)
 					}
 					total_bytes += bytes_recvd;
 				}
-				printf("Data: %s\n", data);
 				status = db_write(req.name, data);
 				if (status < 0) {
 					perror("write unsuccessful");
 					error = 1;		
 					break;
 				}
-				res.op_status = 'K';
-				send(sock_fd, (void *)&res, sizeof(res), 0);
-				printf("write successful\n");
+				res.op_status = 'K'; // write successful
+				send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			}
 			break;
 		
@@ -199,11 +170,10 @@ void handle_work(int sock_fd)
 				error = 1;
 				break;
 			}
-			res.op_status = 'K';
-			sprintf(res.len, "%ld", strlen(data));
-			send(sock_fd, (void *)&res, sizeof(res), 0);
-			send(sock_fd, data, strlen(data), 0);
-			printf("Bytes: %ld, Data: %s\n", strlen(data), data);	
+			res.op_status = 'K'; // read successful
+			sprintf(res.len, "%ld", strlen(data)); // set data length
+			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
+			send(sock_fd, data, strlen(data), 0); // send data
 			break;
 		
 		case 'D':
@@ -213,18 +183,18 @@ void handle_work(int sock_fd)
 				error = 1;
 				break;
 			}
-			res.op_status = 'K';
-			send(sock_fd, (void *)&res, sizeof(res), 0);
+			res.op_status = 'K'; // delete successful
+			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			printf("delete successful!\n");		
 			break;
 		
 		default:
 			break;
 	}
-	if (error == 1) {
-		send(sock_fd, (void *)&res, sizeof(res), 0);	
+	if (error == 1) { // error occurred in the db operation
+		send(sock_fd, (void *)&res, sizeof(res), 0); // send error header	 
 	}
-	close(sock_fd);	
+	close(sock_fd);	// close the current connection
 }
 
 int main(int argc, char **argv)
