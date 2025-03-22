@@ -8,7 +8,7 @@
 #include "dboperations.h"
 
 #define MAX_KEYS 200 // Number of keys
-#define BASE_FOLDER "/tmp"
+
 #define MAX_PATH_LENGTH 100
 
 db_entry_t entries[MAX_KEYS] = {0};

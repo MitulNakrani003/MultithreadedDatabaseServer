@@ -5,6 +5,8 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <pthread.h>
+
 
 #include "proj2.h"
 #include "queue.h"
@@ -16,6 +18,7 @@ queue_t *work_queue = NULL;
 // Change these values as required
 #define DEFAULT_PORT "5000"
 #define LISTENER_QUEUE_SIZE 2
+#define MAX_WORKERS 4
 
 void queue_work(int sock_fd) {
     enqueue(work_queue, sock_fd);
@@ -88,15 +91,13 @@ int listener()
 			perror("connection: accept");
 			continue;
 		}
+		printf("Connection accepted on socket %d\n.", conn_sock); //Test Print
 
-		printf("Client connected:\n");
-
-		// Testing Handle the request
 		// Enqueue the work
-	        queue_work(conn_sock);
-        	// Dequeue and handle the work
-       		int sock = get_work();
-        	handle_work(sock);
+		queue_work(conn_sock);
+		// Dequeue and handle the work
+		// int sock = get_work();
+		// handle_work(sock);
 	}
 	close(listener_sock);
 	return 0;
@@ -104,13 +105,6 @@ int listener()
 
 void handle_work(int sock_fd)
 {
-	if (sock_fd == -1)
-	{
-		perror("connection: accept");
-		return;
-	}
-	printf("Client connected:\n");
-
 	struct request req = {0};
 	char data[DB_VALUE_MAXLENGTH + 1] = "";
     	ssize_t bytes_recvd = 0;
@@ -196,8 +190,44 @@ void handle_work(int sock_fd)
 	close(sock_fd);	// close the current connection
 }
 
+void* distribute_worker() {
+    while (1) {
+        int sock_fd = get_work();
+        handle_work(sock_fd);
+    }
+    return NULL;
+}
+
+void console_handler() {
+    char cmd[100];
+    while (fgets(cmd, sizeof(cmd), stdin)) {
+        if (strncmp(cmd, "stats\n", 6) == 0) {
+            printf("Server statistics:\n");
+        } else if (strncmp(cmd, "quit\n", 5) == 0) {
+            printf("Shutting down server...\n");
+            exit(0);
+        }
+    }
+}
+
+void cleanup_resources() {
+    char command[256];
+    snprintf(command, sizeof(command), "rm -f %s/data.*", BASE_FOLDER);
+    system(command);
+}
+
 int main(int argc, char **argv)
 {
+	cleanup_resources();
+
+	pthread_t listener_thread, worker_threads[MAX_WORKERS];
+    pthread_create(&listener_thread, NULL, listener, NULL);
+    for (int i = 0; i < MAX_WORKERS; i++) {
+        pthread_create(&worker_threads[i], NULL, distribute_worker, NULL);
+    }
+
+	console_handler();
+
 	work_queue = create_queue();
 	int status = listener();
 	if (status != 0)
