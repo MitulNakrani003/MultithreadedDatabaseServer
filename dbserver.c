@@ -129,7 +129,6 @@ void handle_work(int sock_fd)
 	}
 
 	int len = atoi(req.len);
-
 	int status = -1;
 	int error = 0; // flag to check if an error occurred in db operation
 	struct request res = {0}; // response header

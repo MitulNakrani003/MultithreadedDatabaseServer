@@ -16,5 +16,6 @@ typedef struct queue
 queue_t *create_queue();
 void enqueue(queue_t *queue, int sock_fd);
 int dequeue(queue_t *queue);
+int isempty(queue_t *queue);
  
 #endif
