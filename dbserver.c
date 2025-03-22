@@ -96,8 +96,8 @@ int listener()
 		// Enqueue the work
 		queue_work(conn_sock);
 		// Dequeue and handle the work
-		int sock = get_work();
-		handle_work(sock);
+		// int sock = get_work();
+		// handle_work(sock);
 	}
 	close(listener_sock);
 	return 0;
@@ -191,6 +191,14 @@ void handle_work(int sock_fd)
 	close(sock_fd);	// close the current connection
 }
 
+void* distrubute_worker() {
+    while (1) {
+        int sock_fd = get_work();
+        handle_work(sock_fd);
+    }
+    return NULL;
+}
+
 void console_handler() {
     char cmd[100];
     while (fgets(cmd, sizeof(cmd), stdin)) {
@@ -213,11 +221,11 @@ int main(int argc, char **argv)
 {
 	cleanup_resources();
 
-	// pthread_t listener_thread, worker_threads[MAX_WORKERS];
-    // pthread_create(&listener_thread, NULL, listener, NULL);
-    // for (int i = 0; i < MAX_WORKERS; i++) {
-    //     pthread_create(&worker_threads[i], NULL, handle_work, NULL);
-    // }
+	pthread_t listener_thread, worker_threads[MAX_WORKERS];
+    pthread_create(&listener_thread, NULL, listener, NULL);
+    for (int i = 0; i < MAX_WORKERS; i++) {
+        pthread_create(&worker_threads[i], NULL, distrubute_worker, NULL);
+    }
 
 	console_handler();
 
