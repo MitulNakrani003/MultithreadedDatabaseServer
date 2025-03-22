@@ -191,7 +191,7 @@ void handle_work(int sock_fd)
 	close(sock_fd);	// close the current connection
 }
 
-void* distrubute_worker() {
+void* distribute_worker() {
     while (1) {
         int sock_fd = get_work();
         handle_work(sock_fd);
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 	pthread_t listener_thread, worker_threads[MAX_WORKERS];
     pthread_create(&listener_thread, NULL, listener, NULL);
     for (int i = 0; i < MAX_WORKERS; i++) {
-        pthread_create(&worker_threads[i], NULL, distrubute_worker, NULL);
+        pthread_create(&worker_threads[i], NULL, distribute_worker, NULL);
     }
 
 	console_handler();
