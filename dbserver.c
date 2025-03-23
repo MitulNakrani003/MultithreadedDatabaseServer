@@ -12,6 +12,9 @@
 #include "queue.h"
 #include "dboperations.h"
 
+pthread_mutex_t cond_mutex = PTHREAD_MUTEX_INITIALIZER; //mutex for condition variable
+pthread_cond_t queue_fill = PTHREAD_COND_INITIALIZER; // non-empty queue condition
+
 //Queue Instance
 queue_t *work_queue = NULL;
 
@@ -21,12 +24,12 @@ queue_t *work_queue = NULL;
 #define MAX_WORKERS 4
 
 void queue_work(int sock_fd) {
-    enqueue(work_queue, sock_fd);
+	enqueue(work_queue, sock_fd);
 }
 
 int get_work() {
-    int sock_fd = dequeue(work_queue);
-    return sock_fd;
+	int sock_fd = dequeue(work_queue);
+	return sock_fd;
 }
 
 
@@ -94,10 +97,10 @@ int listener()
 		printf("Connection accepted on socket %d\n.", conn_sock); //Test Print
 
 		// Enqueue the work
+		pthread_mutex_lock(&cond_mutex);
 		queue_work(conn_sock);
-		// Dequeue and handle the work
-		// int sock = get_work();
-		// handle_work(sock);
+		pthread_cond_signal(&queue_fill);
+		pthread_mutex_unlock(&cond_mutex);
 	}
 	close(listener_sock);
 	return 0;
@@ -107,18 +110,18 @@ void handle_work(int sock_fd)
 {
 	struct request req = {0};
 	char data[DB_VALUE_MAXLENGTH + 1] = "";
-    	ssize_t bytes_recvd = 0;
+	ssize_t bytes_recvd = 0;
 	int total_bytes_recvd = 0;
 
 	while (total_bytes_recvd < sizeof(req)) {
 		bytes_recvd = recv(sock_fd, ((char*)&req) + total_bytes_recvd, sizeof(req) - total_bytes_recvd, 0);
-	
+
 		if (bytes_recvd <= 0) {
 			perror("Failed to read request header");
 			close(sock_fd);
 			return;
 		}
-	
+
 		total_bytes_recvd += bytes_recvd;
 	}
 
@@ -136,7 +139,7 @@ void handle_work(int sock_fd)
 				total_bytes = 0;
 				while (total_bytes < len) {
 					bytes_recvd = recv(sock_fd, data + total_bytes, len - total_bytes, 0);
-			
+
 					if (bytes_recvd <= 0) 
 					{
 						perror("recv failed");
@@ -155,7 +158,7 @@ void handle_work(int sock_fd)
 				send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			}
 			break;
-		
+
 		case 'R':
 			status = db_read(req.name, data);
 			if (status < 0) {
@@ -168,7 +171,7 @@ void handle_work(int sock_fd)
 			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			send(sock_fd, data, strlen(data), 0); // send data
 			break;
-		
+
 		case 'D':
 			status = db_delete(req.name);
 			if (status < 0) {
@@ -180,7 +183,7 @@ void handle_work(int sock_fd)
 			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			printf("delete successful!\n");		
 			break;
-		
+
 		default:
 			break;
 	}
@@ -191,29 +194,34 @@ void handle_work(int sock_fd)
 }
 
 void* distribute_worker() {
-    while (1) {
-        int sock_fd = get_work();
-        handle_work(sock_fd);
-    }
-    return NULL;
+	while (1) {
+		pthread_mutex_lock(&cond_mutex);
+		while (isempty(&work_queue)) {
+			pthread_cond_wait(&queue_fill, &cond_mutex);
+		}
+		int sock_fd = get_work();
+		pthread_mutex_unlock(&cond_mutex);
+		handle_work(sock_fd);
+	}
+	return NULL;
 }
 
 void console_handler() {
-    char cmd[100];
-    while (fgets(cmd, sizeof(cmd), stdin)) {
-        if (strncmp(cmd, "stats\n", 6) == 0) {
-            printf("Server statistics:\n");
-        } else if (strncmp(cmd, "quit\n", 5) == 0) {
-            printf("Shutting down server...\n");
-            exit(0);
-        }
-    }
+	char cmd[100];
+	while (fgets(cmd, sizeof(cmd), stdin)) {
+		if (strncmp(cmd, "stats\n", 6) == 0) {
+			printf("Server statistics:\n");
+		} else if (strncmp(cmd, "quit\n", 5) == 0) {
+			printf("Shutting down server...\n");
+			exit(0);
+		}
+	}
 }
 
 void cleanup_resources() {
-    char command[256];
-    snprintf(command, sizeof(command), "rm -f %s/data.*", BASE_FOLDER);
-    system(command);
+	char command[256];
+	snprintf(command, sizeof(command), "rm -f %s/data.*", BASE_FOLDER);
+	system(command);
 }
 
 int main(int argc, char **argv)
@@ -221,10 +229,10 @@ int main(int argc, char **argv)
 	cleanup_resources();
 
 	pthread_t listener_thread, worker_threads[MAX_WORKERS];
-    pthread_create(&listener_thread, NULL, listener, NULL);
-    for (int i = 0; i < MAX_WORKERS; i++) {
-        pthread_create(&worker_threads[i], NULL, distribute_worker, NULL);
-    }
+	pthread_create(&listener_thread, NULL, listener, NULL);
+	for (int i = 0; i < MAX_WORKERS; i++) {
+		pthread_create(&worker_threads[i], NULL, distribute_worker, NULL);
+	}
 
 	console_handler();
 
