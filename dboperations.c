@@ -114,12 +114,11 @@ int db_write(char *key, char *value) {
 			return -1;
 		}
 	}
-	// Acquire lock for index here?
-	db_entry_t entry = entries[index];
+	
+	// TODO: Acquire lock for index here?
+	// TODO: Is this appropriate to cache?
+	db_entry_t entry = &entries[index];
 	pthread_mutex_lock(&entry.mutex);
-	// unlock entries here
-	pthread_mutex_unlock(&db_mutex);
-	// TODO: Add a sleeping delay here
 	// Wait till the entry becomes available (not busy)
 	while (entry.state == DB_BUSY) {
 		pthread_cond_wait(&entry.available, &entry.mutex);
@@ -128,9 +127,16 @@ int db_write(char *key, char *value) {
 	if (entry.state == DB_INVALID && entry.key != NULL) {
 		perror("[write]Invalid write");
 		pthread_mutex_unlock(&entry.mutex);
+		pthread_mutex_unlock(&db_mutex);
 		return -1;
 	}
 	entry.state = DB_BUSY;
+	
+	// unlock entries here
+	pthread_mutex_unlock(&db_mutex);
+	
+	// TODO: Add a sleeping delay here
+	
 	// perform write
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
