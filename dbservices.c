@@ -39,7 +39,7 @@ void queue_work(int sock_fd) {
 
 int get_work() {
 	pthread_mutex_lock(&cond_mutex);
-	while (isempty(&work_queue)) {
+	while (isempty(work_queue)) {
 		pthread_cond_wait(&queue_fill, &cond_mutex);
 	}
 	int sock_fd = dequeue(work_queue);
@@ -47,7 +47,7 @@ int get_work() {
 	return sock_fd;
 }
 
-int listener()
+void* listener()
 {
 	int conn_sock = -1;
 
@@ -60,7 +60,7 @@ int listener()
 	if (getaddrinfo(NULL, DEFAULT_PORT, &hints, &listenerinfo) < 0)
 	{
 		perror("getaddrinfo");
-		return 1;
+		return NULL;
 	}
 
 	struct addrinfo *curr = NULL;
@@ -112,9 +112,14 @@ int listener()
 
 		// Enqueue the work
 		queue_work(conn_sock);
+
+		// Below Code for Testing
+		int sock_fd = get_work();
+		// printf("Got work from queue: %d\n", sock_fd); // Test Print
+		handle_work(sock_fd);
 	}
 	close(listener_sock);
-	return 0;
+	return NULL;
 }
 
 void handle_work(int sock_fd)
@@ -142,6 +147,7 @@ void handle_work(int sock_fd)
 	struct request res = {0}; // response header
 	strcpy(res.name, ""); // name is irrelevant
 	res.op_status = 'X'; // Fail status
+	// printf("Received request: %s\n", req.name); // Test Print
 	switch (req.op_status) {
 		case 'W':
 			int total_bytes = 0;
@@ -159,6 +165,7 @@ void handle_work(int sock_fd)
 					}
 					total_bytes += bytes_recvd;
 				}
+				// printf("Received data: %s\n", data); // Test Print
 				status = db_write(req.name, data);
 				update_stats('W', status);	
 				if (status < 0) {
@@ -170,7 +177,6 @@ void handle_work(int sock_fd)
 				send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			}
 			break;
-
 		case 'R':
 			status = db_read(req.name, data);
 			update_stats('R', status);
@@ -184,7 +190,6 @@ void handle_work(int sock_fd)
 			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
 			send(sock_fd, data, strlen(data), 0); // send data
 			break;
-
 		case 'D':
 			status = db_delete(req.name);
 			update_stats('D', status);

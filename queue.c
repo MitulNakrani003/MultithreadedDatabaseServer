@@ -40,9 +40,9 @@ int dequeue(queue_t *queue)
 
 int isempty(queue_t *queue) {
 	if (queue == NULL || queue->front == NULL) {
-		return 0;	
+		return 1;	
 	}
-	return 1;
+	return 0;
 }
 
 int get_queue_size(queue_t *queue) {
