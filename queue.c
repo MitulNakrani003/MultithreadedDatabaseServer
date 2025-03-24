@@ -44,3 +44,16 @@ int isempty(queue_t *queue) {
 	}
 	return 1;
 }
+
+int get_queue_size(queue_t *queue) {
+    if (queue == NULL) {
+        return 0;
+    }
+    int size = 0;
+    node_t *current = queue->front;
+    while (current != NULL) {
+        size++;
+        current = current->next;
+    }
+    return size;
+}

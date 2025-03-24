@@ -12,16 +12,19 @@ all: $(EXES)
 
 dbtest: dbtest.o
 
-dbserver: dbserver.o queue.o dboperations.o
-	gcc -ggdb3 dbserver.o queue.o dboperations.o -o dbserver
+dbserver: dbserver.o dbservices.o queue.o dboperations.o
+	gcc -ggdb3 dbserver.o dbservices.o queue.o dboperations.o -o dbserver
 
 CFLAGS = -Wall -ggdb3
 
 dbtest.o: dbtest.c
 	gcc $(CLAGS) -c dbtest.c -o dbtest.o
 
-dbserver.o: dbserver.c
+dbserver.o: dbserver.c dbservices.h
 	gcc $(CFLAGS) -c dbserver.c -o dbserver.o
+
+dbservices.o: dbservices.c dbservices.h queue.h
+	$(CC) $(CFLAGS) -c dbservices.c -o dbservices.o
 
 queue.o: queue.c queue.h
 	gcc $(CFLAGS) -c queue.c -o queue.o
