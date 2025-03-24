@@ -6,7 +6,7 @@
 // Function declarations
 void queue_work(int sock_fd);
 int get_work();
-void* listener();
+void* listener(void *arg);
 void handle_work(int sock_fd);
 void* distribute_worker();
 void update_stats(char op, int status);

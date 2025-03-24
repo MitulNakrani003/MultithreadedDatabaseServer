@@ -16,14 +16,20 @@
 
 int main(int argc, char **argv)
 {
+	char *port = DEFAULT_PORT;
+    if (argc >= 2) {
+        port = argv[1];
+    }
+
 	cleanup_resources(); // Deletes Data files in the base folder
 	
 	db_init();
-	
+
 	work_queue = create_queue();
 
 	pthread_t listener_thread, worker_threads[MAX_WORKERS];
-	pthread_create(&listener_thread, NULL, listener, NULL);
+	char *port_copy = strdup(port);
+	pthread_create(&listener_thread, NULL, listener, port_copy);
 	for (int i = 0; i < MAX_WORKERS; i++) {
 		pthread_create(&worker_threads[i], NULL, distribute_worker, NULL);
 	}

@@ -47,8 +47,9 @@ int get_work() {
 	return sock_fd;
 }
 
-void* listener()
+void* listener(void *arg)
 {
+	char *port = (char *)arg;
 	int conn_sock = -1;
 
 	struct addrinfo hints = {
@@ -57,7 +58,7 @@ void* listener()
 		.ai_flags = AI_PASSIVE};
 
 	struct addrinfo *listenerinfo = {0};
-	if (getaddrinfo(NULL, DEFAULT_PORT, &hints, &listenerinfo) < 0)
+	if (getaddrinfo(NULL, port, &hints, &listenerinfo) < 0)
 	{
 		perror("getaddrinfo");
 		return NULL;
@@ -70,6 +71,7 @@ void* listener()
 		listener_sock = socket(curr->ai_family, curr->ai_socktype, curr->ai_protocol);
 		if (listener_sock == -1)
 		{
+			free(port);
 			perror("listener: socket");
 			continue;
 		}
@@ -118,6 +120,7 @@ void* listener()
 		// printf("Got work from queue: %d\n", sock_fd); // Test Print
 		// handle_work(sock_fd);
 	}
+	free(port);
 	close(listener_sock);
 	return NULL;
 }
