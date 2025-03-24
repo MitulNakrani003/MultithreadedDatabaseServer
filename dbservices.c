@@ -114,9 +114,9 @@ void* listener()
 		queue_work(conn_sock);
 
 		// Below Code for Testing
-		int sock_fd = get_work();
+		// int sock_fd = get_work();
 		// printf("Got work from queue: %d\n", sock_fd); // Test Print
-		handle_work(sock_fd);
+		// handle_work(sock_fd);
 	}
 	close(listener_sock);
 	return NULL;
