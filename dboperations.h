@@ -1,6 +1,8 @@
 #ifndef DB_OPERATIONNS_H
 #define DB_OPERATIONS_H
 
+#include <pthread.h>
+
 // States for database entries
 #define DB_INVALID 0
 #define DB_BUSY 1
@@ -14,8 +16,12 @@
 typedef struct db_entry {
 	char name[DB_KEY_MAXLENGTH + 1]; // One extra byte for null char at the end
 	int state;
+	pthread_mutex_t mutex;
+	pthread_cond_t available;
 } db_entry_t; 
 
+
+void db_init();
 
 int db_read(char *key, char *value);
 

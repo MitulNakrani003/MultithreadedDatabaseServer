@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "dboperations.h"
 
@@ -12,13 +13,25 @@
 #define MAX_PATH_LENGTH 100
 
 db_entry_t entries[MAX_KEYS] = {0};
+pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void db_init() {
+	for (int i = 0; i < MAX_KEYS; i++) {
+		entries[i].mutex = PTHREAD_MUTEX_INITIALIZER;
+		entries[i].available = PTHREAD_COND_INITIALIZER;		
+	}
+}
 
 int get_index(char *key) {
+	// Need a lock here so that index-key mappings are not changed while reading
+	// pthread_mutex_lock(&db_mutex);
 	for (int i = 0; i < MAX_KEYS; i++) {
 		if (strcmp(entries[i].name, key) == 0) {
+			//pthread_mutex_unlock(&db_mutex);
 			return i;
 		}
 	}
+	// pthread_mutex_unlock(&db_mutex);
 	return -1;
 }
 
@@ -36,83 +49,154 @@ int get_file_path(int index, char *filepath) {
 	return sprintf(filepath, "%s/data.%d", BASE_FOLDER, index);
 }
 
-int db_read(char *key, char *value) {
+int db_read(char *key, char *value) {	
+	pthread_mutex_lock(&db_mutex);
 	int index = get_index(key);
 	// Only read valid entries
-	if (index == -1 || entries[index].state == DB_INVALID) {
-		perror("invalid key");
+	if (index == -1) {
+		perror("[read]invalid key");
+		pthread_mutex_unlock(&db_mutex);
+		return -1;
+	}
+	db_entry_t entry = entries[index];
+	// get the lock for this entry
+	pthread_mutex_lock(&entry.mutex);
+	// lock on entries can be released now
+	pthread_mutex_unlock(&db_mutex);
+	// Wait till entry becomes available
+	while (entry.state == DB_BUSY) {
+		pthread_cond_wait(&entry.available, &entry.mutex);
+	}
+	// Check for invalid entry
+	if (entry.state == DB_INVALID) {
+		perror("[write]invalid entry");		
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	entries[index].state = DB_BUSY;
+	
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
-		perror("filepath failed");
+		perror("[read]filepath failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	int fd = open(filepath, O_RDONLY);
 	if (fd < 0) {
-		perror("file open for read failed");
+		perror("[read]file open for read failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;	
 	}
 	ssize_t bytes_read = read(fd, value, DB_VALUE_MAXLENGTH);
 	if (bytes_read == -1) {
-		perror("read failed");
+		perror("[read]file read failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	close(fd);
+	
 	entries[index].state = DB_VALID;
+	pthread_cond_signal(&entry.available); // signal any threads waiting for this entry
+	pthread_mutex_unlock(&entry.mutex);
 	return 0;
 }
 
 int db_write(char *key, char *value) {
+	// lock entries here so that delete does not get access to this
+	pthread_mutex_lock(&db_mutex);
 	int index = get_index(key); // Check if the key already exists
 	if (index == -1) {
 		index = get_free_index(key); // Find an invalid entry
 		if (index == -1) {
-			perror("invalid key");
+			// unlock entries here as well
+			pthread_mutex_unlock(&db_mutex);
+			perror("[write]invalid key");
 			return -1;
 		}
 	}
-	// TODO: Add a sleeping delay here4
-	entries[index].state = DB_BUSY;
+	// Acquire lock for index here?
+	db_entry_t entry = entries[index];
+	pthread_mutex_lock(&entry.mutex);
+	// unlock entries here
+	pthread_mutex_unlock(&db_mutex);
+	// TODO: Add a sleeping delay here
+	// Wait till the entry becomes available (not busy)
+	while (entry.state == DB_BUSY) {
+		pthread_cond_wait(&entry.available, &entry.mutex);
+	}
+	// If this is rewrite and state is invalid then key is deleted -> invalidate write
+	if (entry.state == DB_INVALID && entry.key != NULL) {
+		perror("[write]Invalid write");
+		pthread_mutex_unlock(&entry.mutex);
+		return -1;
+	}
+	entry.state = DB_BUSY;
+	// perform write
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
-		perror("filepath failed");
+		perror("[write]filepath failed");
+		pthread_mutex_unlock(&entry.mutex);	
 		return -1;
 	}
 	int fd = open(filepath, O_WRONLY | O_CREAT | O_TRUNC, 0777);
 	if (fd < 0) {
-		perror("file open for write failed");
+		perror("[write]file open failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;	
 	}
 	ssize_t bytes_written = write(fd, value, strlen(value));
 	if (bytes_written == -1) {
-		perror("write failed");
+		perror("[write]file write failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	close(fd);
-	strcpy(entries[index].name, key);
-	entries[index].state = DB_VALID;
+	// Update db entry
+	strcpy(entry.name, key);
+	entry.state = DB_VALID;
+	pthread_mutex_signal(&entry.available); // signal any threads waiting for this entry
+	pthread_mutex_unlock(&entry.mutex);
 	return 0;
 }
 
 int db_delete(char *key) {
+	// Get the lock to search for a key
+	pthread_mutex_lock(&db_mutex);
 	int index = get_index(key);
 	if (index == -1) {
-		perror("key not found");
+		perror("[delete]invalid key");
+		pthread_mutex_unlock(&db_mutex);
 		return -1;
 	}
-	char filepath[MAX_PATH_LENGTH] = {'\0'};
+	db_entry_t = entries[index];
+	// Get the lock for this entry
+	pthread_mutex_lock(&entry.mutex);
+	// lock on entries can be release now
+	pthread_mutex_unlock(&db_entry);
+	// wait for the entry to become available
+	while (entry.state == DB_BUSY) {
+		pthread_cond_wait(&entry.available, &entry.mutex);
+	}
+	// Check if the entry became invalid
+	if (entry.state == DB_INVALID) {
+		perror("[delete]invalid key");
+		pthread_mutex_unlock(&entry.mutex);
+		return -1;
+	}
 	if (get_file_path(index, filepath) < 0) {
-		perror("filepath failed");
+		perror("[delete]filepath failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	if (unlink(filepath) < 0) {
-		perror("delete");
+		perror("[delete]unlink failed");
+		pthread_mutex_unlock(&entry.mutex);
 		return -1;
 	}
 	strcpy(entries[index].name, "");
 	entries[index].state = DB_INVALID;
+	pthread_cond_signal(&entry.available); // signal any threads waiting for this entry
+	pthread_mutex_unlock(&entry.mutex);
 	return 0;
 }
 

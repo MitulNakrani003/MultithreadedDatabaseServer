@@ -17,7 +17,9 @@
 int main(int argc, char **argv)
 {
 	cleanup_resources(); // Deletes Data files in the base folder
-
+	
+	db_init();
+	
 	pthread_t listener_thread, worker_threads[MAX_WORKERS];
 	pthread_create(&listener_thread, NULL, listener, NULL);
 	for (int i = 0; i < MAX_WORKERS; i++) {
