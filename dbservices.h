@@ -3,6 +3,8 @@
 
 #include "queue.h"
 
+#define DEFAULT_PORT "5000"
+
 // Function declarations
 void queue_work(int sock_fd);
 int get_work();

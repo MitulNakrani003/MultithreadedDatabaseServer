@@ -11,11 +11,10 @@ EXES = dbserver dbtest
 all: $(EXES)
 
 dbtest: dbtest.o
+	gcc $(CFLAGS) dbtest.o -o dbtest $(LDLIBS)
 
 dbserver: dbserver.o dbservices.o queue.o dboperations.o
-	gcc -ggdb3 dbserver.o dbservices.o queue.o dboperations.o -o dbserver
-
-CFLAGS = -Wall -ggdb3
+	gcc $(CFLAGS) dbserver.o dbservices.o queue.o dboperations.o -o dbserver $(LDLIBS)
 
 dbtest.o: dbtest.c
 	gcc $(CLAGS) -c dbtest.c -o dbtest.o

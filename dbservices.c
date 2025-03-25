@@ -26,9 +26,7 @@ int read_count = 0;
 int delete_count = 0;
 int failed_count = 0;
 
-#define DEFAULT_PORT "5000"
 #define LISTENER_QUEUE_SIZE 2
-
 
 void queue_work(int sock_fd) {
 	pthread_mutex_lock(&cond_mutex);
