@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -54,7 +55,7 @@ int db_read(char *key, char *value) {
 	int index = get_index(key);
 	// Only read valid entries
 	if (index == -1) {
-		perror("[read]invalid key");
+		fprintf(stderr, "[read]invalid key\n");
 		pthread_mutex_unlock(&db_mutex);
 		return -1;
 	}
@@ -69,7 +70,7 @@ int db_read(char *key, char *value) {
 	}
 	// Check for invalid entry
 	if (entry->state == DB_INVALID) {
-		perror("[write]invalid entry");		
+		fprintf(stderr, "[write]invalid entry\n");		
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}
@@ -77,7 +78,7 @@ int db_read(char *key, char *value) {
 	
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
-		perror("[read]filepath failed");
+		fprintf(stderr, "[read]filepath failed\n");
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}
@@ -110,7 +111,7 @@ int db_write(char *key, char *value) {
 		if (index == -1) {
 			// unlock entries here as well
 			pthread_mutex_unlock(&db_mutex);
-			perror("[write]invalid key");
+			fprintf(stderr, "[write]invalid key\n");
 			return -1;
 		}
 	}
@@ -125,7 +126,7 @@ int db_write(char *key, char *value) {
 	}
 	// If this is rewrite and state is invalid then key is deleted -> invalidate write
 	if (entry->state == DB_INVALID && strcmp(entry->name, "") != 0) {
-		perror("[write]Invalid write");
+		fprintf(stderr, "[write]Invalid write\n");
 		pthread_mutex_unlock(&entry->mutex);
 		pthread_mutex_unlock(&db_mutex);
 		return -1;
@@ -136,11 +137,12 @@ int db_write(char *key, char *value) {
 	pthread_mutex_unlock(&db_mutex);
 	
 	// TODO: Add a sleeping delay here
+	usleep(random() % 10000);
 	
 	// perform write
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
-		perror("[write]filepath failed");
+		fprintf(stderr, "[write]filepath failed\n");
 		pthread_mutex_unlock(&entry->mutex);	
 		return -1;
 	}
@@ -170,7 +172,7 @@ int db_delete(char *key) {
 	pthread_mutex_lock(&db_mutex);
 	int index = get_index(key);
 	if (index == -1) {
-		perror("[delete]invalid key");
+		fprintf(stderr, "[delete]invalid key\n");
 		pthread_mutex_unlock(&db_mutex);
 		return -1;
 	}
@@ -185,14 +187,14 @@ int db_delete(char *key) {
 	}
 	// Check if the entry became invalid
 	if (entry->state == DB_INVALID) {
-		perror("[delete]invalid key");
+		fprintf(stderr, "[delete]invalid key\n");
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}
 	
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
-		perror("[delete]filepath failed");
+		fprintf(stderr, "[delete]filepath failed\n");
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}

@@ -106,7 +106,7 @@ void* listener(void *arg)
 		exit(1); 
 	}
 
-	printf("Waiting for connections... \n");
+	printf("waiting for connections... \n");
 
 	listener_sock_fd = listener_sock; 
 	while (running)
@@ -121,7 +121,7 @@ void* listener(void *arg)
 			perror("connection: accept");
 			continue;
 		}
-		printf("Connection accepted on socket %d\n.", conn_sock); //Test Print
+		printf("connection accepted on socket %d\n", conn_sock); //Test Print
 
 		// Enqueue the work
 		queue_work(conn_sock);
@@ -143,7 +143,7 @@ void handle_work(int sock_fd)
 		bytes_recvd = recv(sock_fd, ((char*)&req) + total_bytes_recvd, sizeof(req) - total_bytes_recvd, 0);
 
 		if (bytes_recvd <= 0) {
-			perror("Failed to read request header");
+			perror("failed to read request header");
 			close(sock_fd);
 			return;
 		}
@@ -179,7 +179,7 @@ void handle_work(int sock_fd)
 				status = db_write(req.name, data);
 				update_stats('W', status);	
 				if (status < 0) {
-					perror("write unsuccessful");
+					fprintf(stderr, "write unsuccessful\n");
 					error = 1;	
 					break;
 				}
@@ -191,7 +191,7 @@ void handle_work(int sock_fd)
 			status = db_read(req.name, data);
 			update_stats('R', status);
 			if (status < 0) {
-				perror("read unsuccessful");
+				fprintf(stderr, "read unsuccessful\n");
 				error = 1;
 				break;
 			}
@@ -204,13 +204,12 @@ void handle_work(int sock_fd)
 			status = db_delete(req.name);
 			update_stats('D', status);
 			if (status < 0) {
-				perror("delete unsuccessful");
+				fprintf(stderr, "delete unsuccessful\n");
 				error = 1;
 				break;
 			}
 			res.op_status = 'K'; // delete successful
 			send(sock_fd, (void *)&res, sizeof(res), 0); // send response header
-			printf("delete successful!\n");		
 			break;
 
 		default:
@@ -271,7 +270,7 @@ void console_handler() {
 			printf("Queued requests: %d\n", get_queue_size(work_queue));
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
-			printf("Initiating Graceful Shutdown...\n");
+			printf("initiating graceful shutdown...\n");
             running = 0; // Signal Shutdown
             if (listener_sock_fd != -1) {
                 shutdown(listener_sock_fd, SHUT_RDWR);
@@ -279,7 +278,7 @@ void console_handler() {
             }
             // Wake all worker threads
             pthread_cond_broadcast(&queue_fill);
-			printf("Graceful Shutdown Completed.\n");
+			printf("graceful shutdown completed.\n");
             break;
 		}
 		printf("--------------------------------------------------\n");

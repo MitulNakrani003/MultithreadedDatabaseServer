@@ -18,12 +18,12 @@
 int main(int argc, char **argv)
 {
 	char *port = DEFAULT_PORT;
-    if (argc >= 2) {
-        port = argv[1];
-    }
+	if (argc >= 2) {
+		port = argv[1];
+	}
 
 	cleanup_resources(); // Deletes Data files in the base folder
-	
+
 	db_init();
 
 	work_queue = create_queue();
@@ -37,12 +37,5 @@ int main(int argc, char **argv)
 
 	console_handler();
 
-	
-	// listener();
-	// int status = listener();
-	// if (status != 0)
-	// {
-	// 	return 1;
-	// }
 	return 0;
 }
