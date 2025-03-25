@@ -16,5 +16,6 @@ void console_handler();
 void cleanup_resources();
 
 extern queue_t *work_queue; // Externally declared queue
+extern volatile sig_atomic_t running; 
 
 #endif

@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -18,6 +19,9 @@ pthread_mutex_t stats_mutex = PTHREAD_MUTEX_INITIALIZER; // Mutex for statistics
 
 // Queue Instance
 queue_t *work_queue = NULL;
+// Listener Socket and Running Status
+volatile sig_atomic_t running = 1;
+int listener_sock_fd = -1;
 
 // Global variables to keep track of statistics
 int total_requests = 0;
@@ -38,6 +42,10 @@ void queue_work(int sock_fd) {
 int get_work() {
 	pthread_mutex_lock(&cond_mutex);
 	while (isempty(work_queue)) {
+		if (!running) {  // Check Running Flag
+            pthread_mutex_unlock(&cond_mutex);
+            return -1;
+        }
 		pthread_cond_wait(&queue_fill, &cond_mutex);
 	}
 	int sock_fd = dequeue(work_queue);
@@ -100,11 +108,16 @@ void* listener(void *arg)
 
 	printf("Waiting for connections... \n");
 
-	while (1)
+	listener_sock_fd = listener_sock; 
+	while (running)
 	{
 		conn_sock = accept(listener_sock, NULL, NULL);
 		if (conn_sock == -1)
 		{
+			if (!running) 
+			{
+				break;
+			}
 			perror("connection: accept");
 			continue;
 		}
@@ -113,10 +126,6 @@ void* listener(void *arg)
 		// Enqueue the work
 		queue_work(conn_sock);
 
-		// Below Code for Testing
-		// int sock_fd = get_work();
-		// printf("Got work from queue: %d\n", sock_fd); // Test Print
-		// handle_work(sock_fd);
 	}
 	free(port);
 	close(listener_sock);
@@ -214,8 +223,12 @@ void handle_work(int sock_fd)
 }
 
 void* distribute_worker() {
-	while (1) {
+	while (running) {
 		int sock_fd = get_work();
+		if (sock_fd == -1) 
+		{
+			break;
+		}
 		handle_work(sock_fd);
 	}
 	return NULL;
@@ -249,7 +262,7 @@ void update_stats(char op, int status) {
 void console_handler() {
 	char cmd[128];
 	while (fgets(cmd, sizeof(cmd), stdin)) {
-		printf("--------------------------------------------------");
+		printf("--------------------------------------------------\n");
 		if (strncmp(cmd, "stats\n", 6) == 0) {
 			pthread_mutex_lock(&stats_mutex);
 			printf("Total requests: %d\n", total_requests);
@@ -258,10 +271,18 @@ void console_handler() {
 			printf("Queued requests: %d\n", get_queue_size(work_queue));
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
-			printf("Shutting down server...\n");
-			exit(0);
+			printf("Initiating Graceful Shutdown...\n");
+            running = 0; // Signal Shutdown
+            if (listener_sock_fd != -1) {
+                shutdown(listener_sock_fd, SHUT_RDWR);
+                close(listener_sock_fd);
+            }
+            // Wake all worker threads
+            pthread_cond_broadcast(&queue_fill);
+			printf("Graceful Shutdown Completed.\n");
+            break;
 		}
-		printf("--------------------------------------------------");
+		printf("--------------------------------------------------\n");
 	}
 }
 
