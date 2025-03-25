@@ -148,7 +148,7 @@ void handle_work(int sock_fd)
 	struct request res = {0}; // response header
 	strcpy(res.name, ""); // name is irrelevant
 	res.op_status = 'X'; // Fail status
-	// printf("Received request: %s\n", req.name); // Test Print
+			     // printf("Received request: %s\n", req.name); // Test Print
 	switch (req.op_status) {
 		case 'W':
 			int total_bytes = 0;
@@ -222,9 +222,9 @@ void* distribute_worker() {
 }
 
 void update_stats(char op, int status) {
-    pthread_mutex_lock(&stats_mutex);
-    total_requests++;		
-    if (status < 0) 
+	pthread_mutex_lock(&stats_mutex);
+	total_requests++;		
+	if (status < 0) 
 	{
 		failed_count++;
 	}
@@ -243,23 +243,25 @@ void update_stats(char op, int status) {
 				break;
 		}
 	}
-    pthread_mutex_unlock(&stats_mutex);
+	pthread_mutex_unlock(&stats_mutex);
 }
 
 void console_handler() {
 	char cmd[128];
 	while (fgets(cmd, sizeof(cmd), stdin)) {
+		printf("--------------------------------------------------");
 		if (strncmp(cmd, "stats\n", 6) == 0) {
 			pthread_mutex_lock(&stats_mutex);
 			printf("Total requests: %d\n", total_requests);
-            printf("Writes: %d\nReads: %d\nDeletes: %d\n", write_count, read_count, delete_count);
-            printf("Failed requests: %d\n", failed_count);
-            printf("Queued requests: %d\n", get_queue_size(work_queue));
+			printf("Writes: %d\nReads: %d\nDeletes: %d\n", write_count, read_count, delete_count);
+			printf("Failed requests: %d\n", failed_count);
+			printf("Queued requests: %d\n", get_queue_size(work_queue));
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
 			printf("Shutting down server...\n");
 			exit(0);
 		}
+		printf("--------------------------------------------------");
 	}
 }
 
