@@ -124,7 +124,7 @@ int db_write(char *key, char *value) {
 		pthread_cond_wait(&entry->available, &entry->mutex);
 	}
 	// If this is rewrite and state is invalid then key is deleted -> invalidate write
-	if (entry->state == DB_INVALID && entry->name != NULL) {
+	if (entry->state == DB_INVALID && strcmp(entry->name, "") != 0) {
 		perror("[write]Invalid write");
 		pthread_mutex_unlock(&entry->mutex);
 		pthread_mutex_unlock(&db_mutex);
