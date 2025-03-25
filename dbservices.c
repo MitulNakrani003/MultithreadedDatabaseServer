@@ -43,9 +43,9 @@ int get_work() {
 	pthread_mutex_lock(&cond_mutex);
 	while (isempty(work_queue)) {
 		if (!running) {  // Check Running Flag
-            pthread_mutex_unlock(&cond_mutex);
-            return -1;
-        }
+			pthread_mutex_unlock(&cond_mutex);
+			return -1;
+		}
 		pthread_cond_wait(&queue_fill, &cond_mutex);
 	}
 	int sock_fd = dequeue(work_queue);
@@ -271,15 +271,15 @@ void console_handler() {
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
 			printf("initiating graceful shutdown...\n");
-            running = 0; // Signal Shutdown
-            if (listener_sock_fd != -1) {
-                shutdown(listener_sock_fd, SHUT_RDWR);
-                close(listener_sock_fd);
-            }
-            // Wake all worker threads
-            pthread_cond_broadcast(&queue_fill);
+			running = 0; // Signal Shutdown
+			if (listener_sock_fd != -1) {
+				shutdown(listener_sock_fd, SHUT_RDWR);
+				close(listener_sock_fd);
+			}
+			// Wake all worker threads
+			pthread_cond_broadcast(&queue_fill);
 			printf("graceful shutdown completed.\n");
-            break;
+			break;
 		}
 		printf("--------------------------------------------------\n");
 	}
