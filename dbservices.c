@@ -179,7 +179,6 @@ void handle_work(int sock_fd)
 				status = db_write(req.name, data);
 				update_stats('W', status);	
 				if (status < 0) {
-					fprintf(stderr, "write unsuccessful\n");
 					error = 1;	
 					break;
 				}
@@ -191,7 +190,6 @@ void handle_work(int sock_fd)
 			status = db_read(req.name, data);
 			update_stats('R', status);
 			if (status < 0) {
-				fprintf(stderr, "read unsuccessful\n");
 				error = 1;
 				break;
 			}
@@ -204,7 +202,6 @@ void handle_work(int sock_fd)
 			status = db_delete(req.name);
 			update_stats('D', status);
 			if (status < 0) {
-				fprintf(stderr, "delete unsuccessful\n");
 				error = 1;
 				break;
 			}
@@ -216,7 +213,10 @@ void handle_work(int sock_fd)
 			break;
 	}
 	if (error == 1) { // error occurred in the db operation
+		fprintf(stderr, "[FAILED]: op %c key %s length %s\n", req.op_status, req.name, req.len);
 		send(sock_fd, (void *)&res, sizeof(res), 0); // send error header	 
+	} else {
+		printf("[SUCCESS]: op %c key %s length %s\n", req.op_status, req.name, req.len);
 	}
 	close(sock_fd);	// close the current connection
 }
