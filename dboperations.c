@@ -16,6 +16,7 @@
 db_entry_t entries[MAX_KEYS] = {0};
 pthread_mutex_t db_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+// Initialize the database
 void db_init() {
 	for (int i = 0; i < MAX_KEYS; i++) {
 		pthread_mutex_init(&entries[i].mutex, NULL);
@@ -23,19 +24,17 @@ void db_init() {
 	}
 }
 
+// Get the index of the key
 int get_index(char *key) {
-	// Need a lock here so that index-key mappings are not changed while reading
-	// pthread_mutex_lock(&db_mutex);
 	for (int i = 0; i < MAX_KEYS; i++) {
 		if (strcmp(entries[i].name, key) == 0) {
-			//pthread_mutex_unlock(&db_mutex);
 			return i;
 		}
 	}
-	// pthread_mutex_unlock(&db_mutex);
 	return -1;
 }
 
+// Get the first index which is invalid
 int get_free_index() {
 	// TODO: Can keep a start variable instead of always starting from 0
 	for (int i = 0; i < MAX_KEYS; i++) {
@@ -46,10 +45,13 @@ int get_free_index() {
 	return -1;
 }
 
+// Get the file path for the index
 int get_file_path(int index, char *filepath) {
 	return sprintf(filepath, "%s/data.%d", BASE_FOLDER, index);
 }
 
+// Read the value for the key and store it in value
+// Returns 0 on success, -1 on failure
 int db_read(char *key, char *value) {	
 	pthread_mutex_lock(&db_mutex);
 	int index = get_index(key);
@@ -74,7 +76,7 @@ int db_read(char *key, char *value) {
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}
-	entry->state = DB_BUSY;
+	entry->state = DB_BUSY; // mark the entry as busy
 	
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
 	if (get_file_path(index, filepath) < 0) {
@@ -102,6 +104,8 @@ int db_read(char *key, char *value) {
 	return 0;
 }
 
+// Write the value for the key
+// Returns 0 on success, -1 on failure
 int db_write(char *key, char *value) {
 	// lock entries here so that delete does not get access to this
 	pthread_mutex_lock(&db_mutex);
@@ -134,7 +138,7 @@ int db_write(char *key, char *value) {
 	// unlock entries here
 	pthread_mutex_unlock(&db_mutex);
 	
-	usleep(random() % 10000);
+	usleep(random() % 10000); // add a sleeping delay
 	
 	// perform write
 	char filepath[MAX_PATH_LENGTH] = {'\0'};
@@ -164,6 +168,8 @@ int db_write(char *key, char *value) {
 	return 0;
 }
 
+// Delete the key
+// Returns 0 on success, -1 on failure
 int db_delete(char *key) {
 	// Get the lock to search for a key
 	pthread_mutex_lock(&db_mutex);
@@ -200,11 +206,9 @@ int db_delete(char *key) {
 		pthread_mutex_unlock(&entry->mutex);
 		return -1;
 	}
-	strcpy(entry->name, "");
-	entry->state = DB_INVALID;
+	strcpy(entry->name, ""); // clear the key
+	entry->state = DB_INVALID; // mark the entry as invalid
 	pthread_cond_signal(&entry->available); // signal any threads waiting for this entry
 	pthread_mutex_unlock(&entry->mutex);
 	return 0;
 }
-
-

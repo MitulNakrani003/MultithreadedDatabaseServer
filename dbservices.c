@@ -33,29 +33,32 @@ int queued_requests = 0;
 
 #define LISTENER_QUEUE_SIZE 2
 
+// puts the socket in the work queue
 void queue_work(int sock_fd) {
-	pthread_mutex_lock(&cond_mutex);
+	pthread_mutex_lock(&cond_mutex); // lock the mutex for queue operations
 	enqueue(work_queue, sock_fd);
-	queued_requests++;
-	pthread_cond_signal(&queue_fill);
-	pthread_mutex_unlock(&cond_mutex);
+	queued_requests++; // increment the queued requests
+	pthread_cond_signal(&queue_fill); // signal that the queue is not empty
+	pthread_mutex_unlock(&cond_mutex); // unlock the mutex
 }
 
+// get the socket from the work queue
 int get_work() {
-	pthread_mutex_lock(&cond_mutex);
-	while (isempty(work_queue)) {
-		if (!running) {  // Check Running Flag
-			pthread_mutex_unlock(&cond_mutex);
+	pthread_mutex_lock(&cond_mutex); // lock the mutex for queue operations
+	while (isempty(work_queue)) { // wait until the queue is filled
+		if (!running) {  // check if the server is shutting down
+			pthread_mutex_unlock(&cond_mutex); // unlock the mutex
 			return -1;
 		}
-		pthread_cond_wait(&queue_fill, &cond_mutex);
+		pthread_cond_wait(&queue_fill, &cond_mutex); // wait for the queue to be filled
 	}
-	int sock_fd = dequeue(work_queue);
-	queued_requests--;
-	pthread_mutex_unlock(&cond_mutex);
+	int sock_fd = dequeue(work_queue); // get the socket from the queue
+	queued_requests--; // decrement the queued requests
+	pthread_mutex_unlock(&cond_mutex); // unlock the mutex
 	return sock_fd;
 }
 
+// Listener thread
 void* listener(void *arg)
 {
 	char *port = (char *)arg;
@@ -75,6 +78,7 @@ void* listener(void *arg)
 
 	struct addrinfo *curr = NULL;
 	int listener_sock = -1;
+	// traverse the linked list of addrinfo structs and bind to the first one that works
 	for (curr = listenerinfo; curr != NULL; curr = curr->ai_next)
 	{
 		listener_sock = socket(curr->ai_family, curr->ai_socktype, curr->ai_protocol);
@@ -103,6 +107,7 @@ void* listener(void *arg)
 		exit(1);
 	}
 
+	// listen for incoming connections
 	if (listen(listener_sock, LISTENER_QUEUE_SIZE) == -1)
 	{
 		perror("listen");
@@ -114,7 +119,7 @@ void* listener(void *arg)
 	listener_sock_fd = listener_sock; 
 	while (running)
 	{
-		conn_sock = accept(listener_sock, NULL, NULL);
+		conn_sock = accept(listener_sock, NULL, NULL); // block until a connection is accepted
 		if (conn_sock == -1)
 		{
 			if (!running) 
@@ -135,6 +140,7 @@ void* listener(void *arg)
 	return NULL;
 }
 
+// perform the work from the request
 void handle_work(int sock_fd)
 {
 	struct request req = {0};
@@ -142,6 +148,7 @@ void handle_work(int sock_fd)
 	ssize_t bytes_recvd = 0;
 	int total_bytes_recvd = 0;
 
+	// read the request header
 	while (total_bytes_recvd < sizeof(req)) {
 		bytes_recvd = recv(sock_fd, ((char*)&req) + total_bytes_recvd, sizeof(req) - total_bytes_recvd, 0);
 
@@ -162,13 +169,13 @@ void handle_work(int sock_fd)
 	struct request res = {0}; // response header
 	strcpy(res.name, ""); // name is irrelevant
 	res.op_status = 'X'; // Fail status
-			     // printf("Received request: %s\n", req.name); // Test Print
 	switch (req.op_status) {
 		case 'W':
 			int total_bytes = 0;
 			if (len > 0 && len <= 4096) 
 			{
 				total_bytes = 0;
+				// read the data until the length is reached
 				while (total_bytes < len) {
 					bytes_recvd = recv(sock_fd, data + total_bytes, len - total_bytes, 0);
 
@@ -180,7 +187,6 @@ void handle_work(int sock_fd)
 					}
 					total_bytes += bytes_recvd;
 				}
-				// printf("Received data: %s\n", data); // Test Print
 				status = db_write(req.name, data);
 				update_stats('W', status);	
 				if (status < 0) {
@@ -226,6 +232,7 @@ void handle_work(int sock_fd)
 	close(sock_fd);	// close the current connection
 }
 
+// Worker thread
 void* distribute_worker() {
 	while (running) {
 		int sock_fd = get_work();
@@ -238,6 +245,7 @@ void* distribute_worker() {
 	return NULL;
 }
 
+// Update the statistics
 void update_stats(char op, int status) {
 	pthread_mutex_lock(&stats_mutex);
 	total_requests++;		
@@ -263,6 +271,7 @@ void update_stats(char op, int status) {
 	pthread_mutex_unlock(&stats_mutex);
 }
 
+// Main thread handler to handle console commands
 void console_handler() {
 	char cmd[128];
 	while (fgets(cmd, sizeof(cmd), stdin)) {
@@ -302,6 +311,7 @@ void console_handler() {
 	}
 }	
 
+// Cleanup resources
 void cleanup_resources() {
 	char command[256];
 	snprintf(command, sizeof(command), "rm -f %s/data.*", BASE_FOLDER);
