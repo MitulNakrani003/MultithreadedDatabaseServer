@@ -160,9 +160,9 @@ void handle_work(int sock_fd)
 
 		total_bytes_recvd += bytes_recvd;
 	}
-	
+
 	printf("Handling request %c with key %s received on socket %d\n", req.op_status, req.name, sock_fd);
-	
+
 	int len = atoi(req.len);
 	int status = -1;
 	int error = 0; // flag to check if an error occurred in db operation
@@ -253,20 +253,17 @@ void update_stats(char op, int status) {
 	{
 		failed_count++;
 	}
-	else
+	switch (op) 
 	{
-		switch (op) 
-		{
-			case 'W': 
-				write_count++; 
-				break;
-			case 'R': 
-				read_count++; 
-				break;
-			case 'D': 
-				delete_count++; 
-				break;
-		}
+		case 'W': 
+			write_count++; 
+			break;
+		case 'R': 
+			read_count++; 
+			break;
+		case 'D': 
+			delete_count++; 
+			break;
 	}
 	pthread_mutex_unlock(&stats_mutex);
 }
@@ -286,24 +283,23 @@ void console_handler() {
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
 			printf("initiating graceful shutdown...\n");
 			running = 0; // signal shutdown
-			
 			if (listener_sock_fd != -1) {
 				shutdown(listener_sock_fd, SHUT_RDWR);
 				close(listener_sock_fd);
 			}
-			
+
 			// Wake all worker threads
 			pthread_cond_broadcast(&queue_fill);
-			
+
 			pthread_join(listener_thread, NULL); // join listener thread
 
 			// join all worker threads
 			for (int i = 0; i < MAX_WORKERS; i++) {
 				pthread_join(worker_threads[i], NULL);
 			}			
-			
+
 			free(work_queue); // free work queue
-		
+
 			printf("graceful shutdown completed.\n");
 			exit(0);
 		}
