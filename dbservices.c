@@ -273,19 +273,29 @@ void console_handler() {
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
 			printf("initiating graceful shutdown...\n");
-			running = 0; // Signal Shutdown
+			running = 0; // signal shutdown
+			
 			if (listener_sock_fd != -1) {
 				shutdown(listener_sock_fd, SHUT_RDWR);
 				close(listener_sock_fd);
 			}
+			
 			// Wake all worker threads
 			pthread_cond_broadcast(&queue_fill);
+			
+			pthread_join(listener_thread, NULL); // join listener thread
+
+			// join all worker threads
+			for (int i = 0; i < MAX_WORKERS; i++) {
+				pthread_join(worker_threads[i], NULL);
+			}			
+
 			printf("graceful shutdown completed.\n");
 			break;
 		}
 		printf("--------------------------------------------------\n");
 	}
-}
+}	
 
 void cleanup_resources() {
 	char command[256];
