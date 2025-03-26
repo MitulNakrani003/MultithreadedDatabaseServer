@@ -29,12 +29,14 @@ int write_count = 0;
 int read_count = 0;
 int delete_count = 0;
 int failed_count = 0;
+int queued_requests = 0;
 
 #define LISTENER_QUEUE_SIZE 2
 
 void queue_work(int sock_fd) {
 	pthread_mutex_lock(&cond_mutex);
 	enqueue(work_queue, sock_fd);
+	queued_requests++;
 	pthread_cond_signal(&queue_fill);
 	pthread_mutex_unlock(&cond_mutex);
 }
@@ -49,6 +51,7 @@ int get_work() {
 		pthread_cond_wait(&queue_fill, &cond_mutex);
 	}
 	int sock_fd = dequeue(work_queue);
+	queued_requests--;
 	pthread_mutex_unlock(&cond_mutex);
 	return sock_fd;
 }
@@ -269,7 +272,7 @@ void console_handler() {
 			printf("Total requests: %d\n", total_requests);
 			printf("Writes: %d\nReads: %d\nDeletes: %d\n", write_count, read_count, delete_count);
 			printf("Failed requests: %d\n", failed_count);
-			printf("Queued requests: %d\n", get_queue_size(work_queue));
+			printf("Queued requests: %d\n", queued_requests);
 			pthread_mutex_unlock(&stats_mutex);
 		} else if (strncmp(cmd, "quit\n", 5) == 0) {
 			printf("initiating graceful shutdown...\n");
@@ -289,7 +292,9 @@ void console_handler() {
 			for (int i = 0; i < MAX_WORKERS; i++) {
 				pthread_join(worker_threads[i], NULL);
 			}			
-
+			
+			free(work_queue); // free work queue
+		
 			printf("graceful shutdown completed.\n");
 			exit(0);
 		}
