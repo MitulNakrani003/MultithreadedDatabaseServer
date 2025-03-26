@@ -150,7 +150,9 @@ void handle_work(int sock_fd)
 
 		total_bytes_recvd += bytes_recvd;
 	}
-
+	
+	printf("Handling request %c with key %s received on socket %d\n", req.op_status, req.name, sock_fd);
+	
 	int len = atoi(req.len);
 	int status = -1;
 	int error = 0; // flag to check if an error occurred in db operation

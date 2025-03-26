@@ -116,8 +116,6 @@ int db_write(char *key, char *value) {
 		}
 	}
 	
-	// TODO: Acquire lock for index here?
-	// TODO: Is this appropriate to cache?
 	db_entry_t *entry = &entries[index];
 	pthread_mutex_lock(&entry->mutex);
 	// Wait till the entry becomes available (not busy)
@@ -136,7 +134,6 @@ int db_write(char *key, char *value) {
 	// unlock entries here
 	pthread_mutex_unlock(&db_mutex);
 	
-	// TODO: Add a sleeping delay here
 	usleep(random() % 10000);
 	
 	// perform write
