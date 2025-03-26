@@ -291,11 +291,10 @@ void console_handler() {
 			}			
 
 			printf("graceful shutdown completed.\n");
-			break;
+			exit(0);
 		}
 		printf("--------------------------------------------------\n");
 	}
-	exit(0);
 }	
 
 void cleanup_resources() {
