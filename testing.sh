@@ -1,8 +1,28 @@
 #!/bin/bash
 
 # Setup test environment
+make dbtest
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build dbtest. Exiting."
+    exit 1
+fi
+echo "✅ Successfully built dbtest."
+
+make dbserver
+if [ $? -ne 0 ]; then
+    echo "❌ Failed to build dbserver. Exiting."
+    exit 1
+fi
+echo "✅ Successfully built dbserver."
+
 rm -rf /tmp/dbtest
 mkdir -p /tmp/dbtest
+
+# start a server in a detached tmux session
+tmux new-session -d -s dbserver "./dbserver"
+
+# give enough time for server to start
+sleep 2
 
 # Check if the last command failed
 check_failure() {
