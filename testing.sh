@@ -29,6 +29,8 @@ check_failure() {
     echo "$1" | grep -q '(X)' && return 1 || return 0
 }
 
+echo "Running tests..."
+
 # === TEST 1: Write/Read Operation ===
 echo ""
 echo "=== TEST 1: Write/Read Operations ==="
@@ -198,3 +200,12 @@ fi
 # Cleanup
 echo ""
 echo "All tests completed!"
+
+# Testing completed, send the "quit" command to the server
+echo "Stopping the server..."
+tmux send-keys -t dbserver "quit" C-m
+
+sleep 2
+
+# kill the tmux session
+tmux kill-session -t dbserver
