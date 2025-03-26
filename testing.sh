@@ -18,6 +18,9 @@ echo "✅ Successfully built dbserver."
 rm -rf /tmp/dbtest
 mkdir -p /tmp/dbtest
 
+# install tmux if not present
+command -v tmux >/dev/null 2>&1 || sudo apt install -y tmux
+
 # start a server in a detached tmux session
 tmux new-session -d -s dbserver "./dbserver"
 
