@@ -4,6 +4,7 @@
 rm -rf /tmp/dbtest
 mkdir -p /tmp/dbtest
 
+# Check if the last command failed
 check_failure() {
     echo "$1" | grep -q '(X)' && return 1 || return 0
 }
@@ -14,6 +15,7 @@ echo "=== TEST 1: Write/Read Operations ==="
 output1=$(./dbtest -p 5000 -S username "johndoe" 2>&1)
 check_failure "$output1"
 result1=$?
+# echo "Output1: $output1"
 output2=$(./dbtest -p 5000 -G username 2>&1)
 check_failure "$output2"
 result2=$?
@@ -65,7 +67,7 @@ result2=$?
 output3=$(./dbtest -p 5000 -G overwritekey 2>&1)
 check_failure "$output3"
 result3=$?
-if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $result3 -eq 0 ]; then
+if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $result3 -eq 0 ]  && [ "$output3" = '="value2"' ]; then
     echo "✅ Test 4 Passed"
 else
     echo "❌ Test 4 Failed"
@@ -84,9 +86,9 @@ else
     echo "❌ Test 5 Failed"
 fi
 
-# === TEST 9: Concurrent Writes ===
+# === TEST 6: Concurrent Writes ===
 echo ""
-echo "=== TEST 9: Concurrent Writes ==="
+echo "=== TEST 6: Concurrent Writes ==="
 output1=$(./dbtest -p 5000 -S key1 "value1" & ./dbtest -p 5000 -S key2 "value2" & wait)
 check_failure "$output1"
 result1=$?
@@ -94,30 +96,30 @@ output2=$(./dbtest -p 5000 -G key1 2>&1)
 result2=$?
 output3=$(./dbtest -p 5000 -G key2 2>&1)
 result3=$?
-if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $result3 -eq 0 ]; then
-    echo "✅ Test 9 Passed"
+if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $result3 -eq 0 ] && [ "$output2" = '="value1"' ] && [ "$output3" = '="value2"' ]; then
+    echo "✅ Test 6 Passed"
 else
-    echo "❌ Test 9 Failed"
+    echo "❌ Test 6 Failed"
 fi
 
 
-# === TEST 10: Concurrent Writes On Same Key ===
+# === TEST 7: Concurrent Writes On Same Key - Race Condition ===
 echo ""
-echo "=== TEST 10: Concurrent Writes On Same Key ==="
+echo "=== TEST 7: Concurrent Writes On Same Key ==="
 output1=$(./dbtest -p 5000 -S keySame "value1" & ./dbtest -p 5000 -S keySame "value2" & wait)
 check_failure "$output1"
 result1=$?
 output2=$(./dbtest -p 5000 -G keySame 2>&1)
 result2=$?
 if [ $result1 -eq 0 ] && [ $result2 -eq 0 ]; then
-    echo "✅ Test 10 Passed"
+    echo "✅ Test 7 Passed"
 else
-    echo "❌ Test 10 Failed"
+    echo "❌ Test 7 Failed"
 fi
 
-# === TEST 11: 6 Instructions Combination of Read, Write, and Delete ===
+# === TEST 8: 6 Instructions Combination of Read, Write, and Delete ===
 echo ""
-echo "=== TEST 11: Combination of Read, Write, and Delete ==="
+echo "=== TEST 8: Combination of Read, Write, and Delete ==="
 output1=$(./dbtest -p 5000 -S comboKey "initialValue" 2>&1)
 check_failure "$output1"
 result1=$?
@@ -138,15 +140,14 @@ check_failure "$output6"
 result6=$?
 if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $result3 -eq 0 ] &&
    [ $result4 -eq 0 ] && [ $result5 -eq 0 ] && [ $result6 -ne 0 ]; then
-    echo "✅ Test 11 Passed"
+    echo "✅ Test 8 Passed"
 else
-    echo "❌ Test 11 Failed"
+    echo "❌ Test 8 Failed"
 fi
 
-# === TEST 12: Write and Read 4096 Bytes of Data ===
+# === TEST 9: Write and Read 4096 Bytes of Data ===
 echo ""
-echo "=== TEST 12: Write and Read 4096 Bytes of Data ==="
-# Generate a 4096-byte-long string
+echo "=== TEST 9: Write and Read 4096 Bytes of Data ==="
 large_value=$(head -c 4096 </dev/urandom | base64 | head -c 4096)
 # generated_length=${#large_value}
 # echo "Size of Generated Data: $generated_length bytes"
@@ -159,12 +160,21 @@ result2=$?
 read_length=${#output2}
 # echo "Length of Read Data: $read_length bytes"
 if [ $result1 -eq 0 ] && [ $result2 -eq 0 ] && [ $read_length -eq $((4096 + 3)) ]; then # 3 bytes are added  for ="" in the output.
-    echo "✅ Test 12 Passed"
+    echo "✅ Test 9 Passed"
 else
-    echo "❌ Test 12 Failed"
+    echo "❌ Test 9 Failed"
 fi
 
-
+# === TEST 10: Run dbtest with --port, --count, and --threads ===
+echo ""
+echo "=== TEST 10: Run dbtest with --port, --count, and --threads ==="
+output=$(./dbtest --port=5000 --count=100 --threads=5 2>&1 && wait)
+result=$?
+if [ $result -eq 0 ] && [ -z "$output" ]; then
+    echo "✅ Test 10 Passed"
+else
+    echo "❌ Test 10 Failed"
+fi
 # Cleanup
 echo ""
 echo "All tests completed!"
