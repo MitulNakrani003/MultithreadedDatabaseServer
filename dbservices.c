@@ -295,6 +295,7 @@ void console_handler() {
 		}
 		printf("--------------------------------------------------\n");
 	}
+	exit(0);
 }	
 
 void cleanup_resources() {
